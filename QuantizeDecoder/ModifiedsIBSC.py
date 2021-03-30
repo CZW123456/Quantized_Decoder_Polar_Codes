@@ -75,6 +75,7 @@ class ModifiedsIBSC():
         border_vectors = border_vectors.astype(np.int32)
         return border_vectors
 
+
     def find_quantizer(self, channel_symbol_probs):
         n = int(np.log2(self.N))
 
@@ -160,3 +161,6 @@ class ModifiedsIBSC():
         return lut_fs, lut_gs, virtual_channel_llrs, virtual_channel_transition_probs
 
 
+if __name__ == "__main__":
+    t = ModifiedsIBSC(128, 64, 32)
+    tmp = t.get_border_vector(1024, 32, 1)

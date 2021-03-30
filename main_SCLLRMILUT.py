@@ -1,5 +1,5 @@
 import numpy as np
-from QuantizeDecoder.MMISC import continous2discret
+from QuantizeDecoder.QDensityEvolution_MMI import continous2discret
 from QuantizeDecoder.LLRMIQuantizer import LLRMIQuantizer
 from PolarDecoder.Decoder.SCLUTDecoder import SCLUTDecoder
 from ConventionalDecoder.encoder import PolarEncoder

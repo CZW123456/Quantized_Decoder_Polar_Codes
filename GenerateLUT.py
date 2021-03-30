@@ -1,5 +1,5 @@
 import numpy as np
-from QuantizeDecoder.MMISC import SCQuantizer, channel_transition_probability_table
+from QuantizeDecoder.QDensityEvolution_MMI import SCQuantizer, channel_transition_probability_table
 from quantizers.quantizer.MMI import MMIQuantizer
 from ConventionalDecoder.CodeConstruction import PolarCodeConstructor
 import pickle as pkl

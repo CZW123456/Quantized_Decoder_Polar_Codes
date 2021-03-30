@@ -136,7 +136,7 @@ class FastCASCLDecoder():
                         sorted_llr_idx = np.argsort(abs_llr, axis=1)      # sort llr array of each SC decoder in ascending order
                         PML[even_parity == 1] += abs_llr[even_parity==1, sorted_llr_idx[even_parity==1, 0]]
                         decision[even_parity==1, sorted_llr_idx[even_parity==1, 0]] = 1 - decision[even_parity==1, sorted_llr_idx[even_parity==1, 0]]
-                        max_depth = np.min([self.L - 1, temp])
+                        max_depth = np.min([self.L, temp])
 
                         # tree search
                         for layer in range(1, max_depth):

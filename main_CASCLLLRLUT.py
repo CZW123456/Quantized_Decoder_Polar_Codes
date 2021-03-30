@@ -1,5 +1,5 @@
 import numpy as np
-from QuantizeDecoder.MMISC import continous2discret, channel_transition_probability_table
+from QuantizeDecoder.QDensityEvolution_MMI import continous2discret, channel_transition_probability_table
 from PolarDecoder.Decoder.CASCLLUTDecoder import CASCLLUTDecoder
 from ConventionalDecoder.encoder import PolarEncoder
 from ConventionalDecoder.CRC import CRC
@@ -54,7 +54,6 @@ def main():
     ber = []
     fer = []
     # timing variables
-    total_decode_time = 0
     total_blocks = 0
     print("EbN0 range:[{:d}, {:d}] Number Blocks Per EbN0 = {:d}".format(EbN0dBTest[0], EbN0dBTest[-1], MaxBlock))
     print("Simulation Begin...")

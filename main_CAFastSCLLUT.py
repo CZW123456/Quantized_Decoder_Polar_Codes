@@ -1,5 +1,5 @@
 import numpy as np
-from QuantizeDecoder.MMISC import continous2discret, channel_transition_probability_table
+from QuantizeDecoder.QDensityEvolution_MMI import continous2discret, channel_transition_probability_table
 from PolarDecoder.Decoder.CAFastSCLLUTDecoder import CAFastSCLLUTDecoder
 from quantizers.quantizer.MMI import MMIQuantizer
 from ConventionalDecoder.encoder import PolarEncoder

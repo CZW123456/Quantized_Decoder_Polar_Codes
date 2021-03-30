@@ -1,5 +1,5 @@
 import numpy as np
-from QuantizeDecoder.MMISC import SCQuantizer, channel_transition_probability_table
+from QuantizeDecoder.QDensityEvolution_MMI import SCQuantizer, channel_transition_probability_table
 from quantizers.quantizer.MMIQuantizer import MMIQuantizer
 from QuantizeDecoder.ModifiedsIBSC import ModifiedsIBSC
 from ConventionalDecoder.CodeConstruction import PolarCodeConstructor

@@ -1,5 +1,5 @@
 import numpy as np
-from QuantizeDecoder.MMISC import channel_transition_probability_table
+from QuantizeDecoder.QDensityEvolution_MMI import channel_transition_probability_table
 from quantizers.quantizer.MMI import MMIQuantizer
 from QuantizeDecoder.LLRQuantizedSC import LLRQuantizerSC
 from ConventionalDecoder.CodeConstruction import PolarCodeConstructor
@@ -9,8 +9,8 @@ import os
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--N", type=int, default=128)
-    parser.add_argument("--K", type=int, default=64)
+    parser.add_argument("--N", type=int, default=256)
+    parser.add_argument("--K", type=int, default=128)
     parser.add_argument("--v", type=int, default=16)
     parser.add_argument("--quantize_channel_uniform", type=int, default=128)
 

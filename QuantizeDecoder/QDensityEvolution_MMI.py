@@ -1,42 +1,14 @@
 import numpy as np
 from quantizers.quantizer.MMI import MMIQuantizer
-from bisect import bisect_left
 from tqdm import tqdm
 from PyIBQuantizer.inf_theory_tools import log2_stable, mutual_information
 
 
-def continous2discret(x, xs, max_level):
-    if x <= xs[0]:
-        return 0
-    if x >= xs[-1]:
-        return max_level
+class QDensityEvolutionMMI():
 
-    i = bisect_left(xs, x)   # binary search for determining the smallest number that is larger than x
-
-    return int(i - 1)
-
-
-def channel_transition_probability_table(M, low, high, mu, sigma):
-    delta = 0.0001
-    x_continuous = np.arange(low, high + delta, delta)
-    pyx_continuous = 1 / np.sqrt(2*np.pi*sigma**2) * np.exp(-(x_continuous - mu)**2 / (2*sigma**2))
-    x_discrete = np.linspace(low, high, M + 1)
-    pyx = np.zeros(M)
-    for i in range(M):
-        index1 = x_continuous >= x_discrete[i]
-        index2 = x_continuous <= x_discrete[i + 1]
-        index = np.bitwise_and(index1, index2)
-        density = pyx_continuous[index]
-        pyx[i] = np.sum(density) * delta
-    return pyx, x_discrete
-
-class SCQuantizer():
-
-    def __init__(self, N, K, quantization_level_decoder, frozen_bits):
+    def __init__(self, N, quantization_level_decoder):
         self.N = N
-        self.K = K
         self.quantization_level_decoder = quantization_level_decoder
-        self.frozen_bits = frozen_bits
 
     def get_lut_from_Q(self, Q, num_y0, num_y1, mode='f'):
         if mode == 'f':
@@ -59,7 +31,7 @@ class SCQuantizer():
         return lut
 
 
-    def find_quantizer(self, channel_symbol_probs):
+    def run(self, channel_symbol_probs):
         n = int(np.log2(self.N))
 
         virtual_channel_transition_probs = np.zeros((n, self.N, 2, self.quantization_level_decoder))
