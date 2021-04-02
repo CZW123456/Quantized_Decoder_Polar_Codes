@@ -1,7 +1,7 @@
 import numpy as np
 from QuantizeDecoder.LLRMIQuantizedSC import LLRMIQuantizerSC
 from QuantizeDecoder.LLRMIQuantizer import LLRMIQuantizer
-from ConventionalDecoder.CodeConstruction import PolarCodeConstructor
+from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
 import pickle as pkl
 import argparse
 import os

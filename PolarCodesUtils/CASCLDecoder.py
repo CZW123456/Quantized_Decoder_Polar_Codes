@@ -1,5 +1,5 @@
 import numpy as np
-from ConventionalDecoder.CRC import CRC
+from PolarCodesUtils.CRC import CRC
 
 class CASCLDecoder():
 

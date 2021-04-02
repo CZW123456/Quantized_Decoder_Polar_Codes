@@ -1,8 +1,8 @@
 import numpy as np
 from PyIBQuantizer.inf_theory_tools import mutual_information
 import argparse
-from ConventionalDecoder.CodeConstruction import PolarCodeConstructor
-from ConventionalDecoder.IdentifyNodes import NodeIdentifier
+from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
+from PolarCodesUtils.IdentifyNodes import NodeIdentifier
 from QuantizeDecoder.QDensityEvolution_MMI import channel_transition_probability_table
 from quantizers.quantizer.MMI import MMIQuantizer
 import os

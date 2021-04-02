@@ -1,5 +1,5 @@
-from ConventionalDecoder import SCDecoder, CodeConstruction, encoder
-import ConventionalDecoder
+from PolarCodesUtils import SCDecoder, CodeConstruction, encoder
+import PolarCodesUtils
 from PolarDecoder._cpp._libPolarDecoder import SCDecoder
 import numpy as np
 import argparse
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # initialize encoder and decoder
     polar_encoder = encoder.PolarEncoder(N, K, frozenbits, msgbits)
-    py_polar_decoder = ConventionalDecoder.SCDecoder.SCDecoder(N, K, frozenbits, msgbits, channel_level, channel_idx)
+    py_polar_decoder = PolarCodesUtils.SCDecoder.SCDecoder(N, K, frozenbits, msgbits, channel_level, channel_idx)
     polar_decoder = SCDecoder(N, K, frozen_indicator, message_indicator, channel_level, channel_idx)
     # simulation parameter configuration
     MaxBlock = 5*10**5

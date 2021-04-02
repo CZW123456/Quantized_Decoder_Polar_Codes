@@ -1,4 +1,4 @@
-from ConventionalDecoder.CodeConstruction import phi_inverse,  phi
+from PolarCodesUtils.CodeConstruction import phi_inverse,  phi
 import numpy as np
 from QuantizeDecoder.OptUniformQuantizerGaussian import OptUniformQuantizerGaussian
 
@@ -11,7 +11,7 @@ class LLRLSUniformQuantizer():
     def generate_uniform_quantizers(self, sigma):
         n = int(np.log2(self.N))
         mu_llr = np.zeros((n + 1, self.N))
-        mu_llr[0, :] = 2 / sigma ** 2
+        mu_llr[0, :] = 2/sigma**2
         Q =  OptUniformQuantizerGaussian(self.v)
         decoder_r_f = np.zeros(shape=self.N-1)
         decoder_r_g = np.zeros(shape=self.N-1)

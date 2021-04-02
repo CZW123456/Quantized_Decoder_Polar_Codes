@@ -7,8 +7,8 @@ from PolarDecoder.Decoder.SCDecoder import SCDecoder
 from PolarDecoder.Decoder.SCLDecoder import SCLDecoder
 from PolarDecoder.Decoder.FastSCLDecoder import FastSCLDecoder
 from PolarDecoder.Decoder.CASCLDecoder import CASCLDecoder
-from ConventionalDecoder.IdentifyNodes import NodeIdentifier
-from ConventionalDecoder.CodeConstruction import PolarCodeConstructor
+from PolarCodesUtils.IdentifyNodes import NodeIdentifier
+from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
 from PolarBDEnc.Encoder.PolarEnc import PolarEnc
 from PolarBDEnc.Encoder.CRCEnc import CRCEnc
 import argparse

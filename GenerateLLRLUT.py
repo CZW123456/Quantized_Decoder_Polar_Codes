@@ -2,7 +2,7 @@ import numpy as np
 from QuantizeDecoder.QDensityEvolution_MMI import channel_transition_probability_table
 from quantizers.quantizer.MMI import MMIQuantizer
 from QuantizeDecoder.LLRQuantizedSC import LLRQuantizerSC
-from ConventionalDecoder.CodeConstruction import PolarCodeConstructor
+from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
 import pickle as pkl
 import argparse
 import os

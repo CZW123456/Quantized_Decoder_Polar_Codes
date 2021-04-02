@@ -1,33 +1,52 @@
 import numpy as np
-from utils import continous2discret, channel_transition_probability_table
-from PolarDecoder.Decoder.SCLUTDecoder import SCLUTDecoder
-from PolarDecoder.Decoder.SCLLUTDecoder import SCLLUTDecoder
-from PolarDecoder.Decoder.FastSCLUTDecoder import FastSCLUTDecoder
-from PolarDecoder.Decoder.FastSCLLUTDecoder import FastSCLLUTDecoder
-from PolarDecoder.Decoder.CASCLLUTDecoder import CASCLLUTDecoder
-from quantizers.quantizer.MMI import MMIQuantizer
+from PolarDecoder.Decoder.SCLUniformQuantizedDecoder import SCLUniformQuantizedDecoder
+from PolarDecoder.Decoder.SCUniformQuantizedDecoder import SCUniformQuantizedDecoder
+from QuantizeDecoder.OptUniformQuantizerGaussian import OptUniformQuantizerGaussian
+from QuantizeDecoder.LLRLSUniformSC import LLRLSUniformQuantizer
+
+from PolarDecoder.Decoder.SCLLloydQuantizedDecoder import SCLLloydQuantizedDecoder
+from PolarDecoder.Decoder.SCLloydQuantizedDecoder import SCLloydQuantizedDecoder
+from QuantizeDecoder.LloydQuantizer import LloydQuantizer
+from QuantizeDecoder.LLRLloydSC import LLRLloydGA
+
 from PolarBDEnc.Encoder.PolarEnc import PolarEnc
 from PolarBDEnc.Encoder.CRCEnc import CRCEnc
 from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
-from PolarCodesUtils.IdentifyNodes import NodeIdentifier
+
+from bisect import bisect_left
 
 from torchtracer import Tracer
 from torchtracer.data import Config
-
 import argparse
 import os
-import pickle as pkl
 import shutil
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+
+def QUniform(llr, M, r):
+    llr[np.abs(llr) <= M] = (np.floor(llr[np.abs(llr) <= M] / r).astype(int) + 1 / 2) * r
+    llr[np.abs(llr) > M] = np.sign(llr[np.abs(llr) > M]) * (M - r / 2)
+    return llr
+
+def QLloyd(llrs, boundary, reconstruct):
+    quantized_result = []
+    for llr in llrs[0]:
+        if llr <= boundary[0]:
+            return reconstruct[0]
+        if llr >= boundary[-1]:
+            return reconstruct[-1]
+        i = int(bisect_left(boundary, llr))
+        quantized_result.append(reconstruct[i - 1])
+    quantized_result = np.asarray(quantized_result)
+    return quantized_result
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--N", type=int, default=512)
 parser.add_argument("--A", type=int, default=32)
 parser.add_argument("--L", type=int, default=8)
-parser.add_argument("--DecoderType", type=str, default="CA-SCL")
-parser.add_argument("--QuantizationAlgorithm", type=str, default="MMI")
+parser.add_argument("--DecoderType", type=str, default="SC-Uniform-LLR")
+parser.add_argument("--QuantizationAlgorithm", type=str, default="Uniform")
 parser.add_argument("--isCRC",type=str, default="yes")
 parser.add_argument("--QChannelUniform", type=int, default=128)
 parser.add_argument("--QDecoder", type=int, default=16)
@@ -50,6 +69,7 @@ else:
 L = args.L # list size
 rate = A / N # true ode rate
 DecoderType = args.DecoderType
+QuantizationAlgorithm = args.QuantizationAlgorithm
 
 if isCRC == "yes" and DecoderType[:2] != "CA":
     raise RuntimeError("You are using CRC added encoding scheme and it seems that you are not using CA-type"
@@ -62,50 +82,53 @@ QDecoder = args.QDecoder
 QChannel = args.QChannel
 QChannelUniform = args.QChannelUniform
 
-load_dir = ""
-
 # code construction
 constructor = PolarCodeConstructor(N, K, "./reliable sequence.txt")
 frozenbits, msgbits, frozenbits_indicator, messagebits_indicator = constructor.PW()  # PW code construction
-
-# node type identification
-node_identifier = NodeIdentifier(N, K, frozenbits, msgbits, use_new_node=False)
-node_type = node_identifier.run().astype(np.int32)
 
 # initialize encoder and decoder
 polar_encoder = PolarEnc(N, K, frozenbits, msgbits)
 crc_encoder = CRCEnc(crc_n, crc_p)
 
+# initialize uniform/Lloyd quantizer for AWGN channels and internal LLRs
+UniformChannelQuantizer = OptUniformQuantizerGaussian(QChannel)
+LloydChannelQuantizer = LloydQuantizer(QDecoder, max_iter=200)
+QDecoderUniform = LLRLSUniformQuantizer(N, QChannel)
+QDecoderLloyd = LLRLloydGA(N, QDecoder, max_iter=200)
 DesignEbN0dB = args.DesignSNRdB
-load_path_f = os.path.join(load_dir, "LUT_F_EbN0dB={:d}.pkl".format(DesignEbN0dB))
-load_path_g = os.path.join(load_dir, "LUT_G_EbN0dB={:d}.pkl".format(DesignEbN0dB))
-load_path_virtual_channel_llr = os.path.join(load_dir, "LLR_EbN0dB={:d}.pkl".format(DesignEbN0dB))
-with open(load_path_f, "rb+") as f:
-    lut_fs = pkl.load(f)
-with open(load_path_g, "rb+") as f:
-    lut_gs = pkl.load(f)
-with open(load_path_virtual_channel_llr, "rb") as f:
-    virtual_channel_llrs = pkl.load(f)
+EbN0 = 10**(DesignEbN0dB/10)  # linear scale snr
+sigma = np.sqrt(1/(2*rate*EbN0))  # Gaussian noise variance for current EbN0
 
-# load quantized decoder
-virtual_channel_llrs = virtual_channel_llrs.tolist()
-lut_fs = np.array([np.array(lut_fs[key]).astype(np.int32) for key in lut_fs.keys()])
-lut_gs = np.array([np.array(lut_gs[key]).astype(np.int32) for key in lut_gs.keys()])
-fs = []
-for ele in lut_fs:
-    fs.append(ele.tolist())
-gs = []
-for ele in lut_gs:
-    gs.append(ele.tolist())
+if QuantizationAlgorithm == "Uniform":
+    decoder_r_f, decoder_r_g = QDecoderUniform.generate_uniform_quantizers(sigma)
+    decoder_r_f = decoder_r_f.tolist()
+    decoder_r_g = decoder_r_g.tolist()
+    if DecoderType.split("-")[0] == "SC":
+        polar_decoder = SCUniformQuantizedDecoder(N, K, frozenbits_indicator, messagebits_indicator, decoder_r_f, decoder_r_g, QDecoder)
+    elif DecoderType.split("-")[0] == "SCL":
+        SCLUniformQuantizedDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, decoder_r_f, decoder_r_g, QDecoder)
+    else:
+        raise RuntimeError("DecoderType should begin with either SC or SCL")
 
-DecoderDict = {"SC-LUT": SCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
-               "SCL-LUT": SCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
-               "FastSC-LUT": FastSCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
-               "FastSCL-LUT": FastSCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
-               "CA-SCL-LUT": CASCLLUTDecoder(N, K, A, L, frozenbits_indicator, messagebits_indicator, crc_n, crc_p, fs, gs, virtual_channel_llrs)}
+elif QuantizationAlgorithm == "Lloyd":
+    decoder_boundary_f, decoder_boundary_g, decoder_reconstruct_f, decoder_reconstruct_g = QDecoderLloyd.generate_Lloyd_quantizers(sigma)
+    decoder_boundary_f = decoder_boundary_f.tolist()
+    decoder_boundary_g = decoder_boundary_g.tolist()
+    decoder_reconstruct_f = decoder_reconstruct_f.tolist()
+    decoder_reconstruct_g = decoder_reconstruct_g.tolist()
+    if DecoderType.split("-")[0] == "SC":
+        polar_decoder = SCLloydQuantizedDecoder(N, K, frozenbits_indicator, messagebits_indicator, decoder_boundary_f,
+                                                decoder_boundary_g, decoder_reconstruct_f, decoder_reconstruct_g, QDecoder)
+    elif DecoderType.split("-")[0] == "SCL":
+        polar_decoder = SCLLloydQuantizedDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, decoder_boundary_f,
+                                                 decoder_boundary_g, decoder_reconstruct_f, decoder_reconstruct_g,
+                                                 QDecoder)
+    else:
+        raise RuntimeError("DecoderType should begin with either SC or SCL")
+else:
+    raise RuntimeError("Quantization method for AWGN channel should be either Uniform or Lloyd")
 
-polar_decoder = DecoderDict[DecoderType]
-
+QFuncDict = {"Uniform":QUniform, "Lloyd":QLloyd}
 # configure experiment tracer
 experiment_name = "{:s}-N={:d}-A={:d}-L={:d}-CRC={:s}".format(DecoderType, N, A, L, isCRC)
 if os.path.isdir(os.path.join(os.getcwd(), "simulation result", experiment_name)):
@@ -142,23 +165,20 @@ for EbN0dB in EbN0dBTest:
     EbN0 = 10**(EbN0dB/10)
     sigma = np.sqrt(1/(2*rate*EbN0))
 
-    # Build physical channel quantizer under the specific Eb/N0, here we build MMI quantizer for all quantized decoder
-    highest = 1 + 3 * sigma
-    lowest = -1 - 3 * sigma
-    ChannelQuantizer = MMIQuantizer(px1=0.5, px_minus1=0.5)
-    pyx1, interval_x = channel_transition_probability_table(QChannelUniform, lowest, highest, 1, sigma)
-    pyx_minus1, _ = channel_transition_probability_table(QChannelUniform, lowest, highest, -1, sigma)
-    joint_prob = np.zeros((2, QChannelUniform)).astype(np.float32)
-    joint_prob[0] = pyx1
-    joint_prob[1] = pyx_minus1
-    channel_lut = ChannelQuantizer.find_opt_quantizer_AWGN(joint_prob, QChannel)
-    pzx = np.zeros((2, int(QChannel)))
-    for i in range(int(QChannel)):
-        begin = channel_lut[i]
-        end = channel_lut[i + 1]
-        pzx[0, i] = np.sum(pyx1[begin:end])
-        pzx[1, i] = np.sum(pyx_minus1[begin:end])
+    # Build physical channel quantizer for LLR soft values under the specific Eb/N0, here we build MMI quantizer for all quantized decoder
+    mu_llr = 2 / sigma ** 2
+    sigma2_llr = 2 * mu_llr
 
+    if QuantizationAlgorithm == "Uniform":
+        reconstruct_channel = UniformChannelQuantizer.find_optimal_interval_bimodal_Gaussian(mu_llr, sigma2_llr, 30)
+        boundary_channel = (QChannel // 2 - 1) * reconstruct_channel
+    elif QuantizationAlgorithm == "Lloyd":
+        boundary_channel, reconstruct_channel = LloydChannelQuantizer.find_quantizer_gaussian(mu_llr, sigma2_llr,
+                                                                                              begin=-mu_llr - 3*np.sqrt(sigma2_llr),
+                                                                                              end=mu_llr + 3*np.sqrt(sigma2_llr))
+    else:
+        raise RuntimeError("Quantization method for AWGN channel should be either Uniform or Lloyd")
+    q = QFuncDict[QuantizationAlgorithm]
     Nbiterrs = 0
     Nblkerrs = 0
     Nblocks = 0
@@ -173,12 +193,11 @@ for EbN0dB in EbN0dBTest:
 
         y = bpsksymbols + np.random.normal(loc=0, scale=sigma, size=(1, N))  # AWGN noisy channel
 
-        y_symbols = np.zeros(N)
+        llr = y * 2/(sigma**2) # convert noisy symbol soft value to LLR
 
-        for i in range(N):
-            y_symbols[i] = continous2discret(y[0, i], interval_x[channel_lut], QChannel - 1)
+        qllr = q(llr, boundary_channel, reconstruct_channel)
 
-        decoded_bits = polar_decoder.decode(y_symbols)
+        decoded_bits = polar_decoder.decode(qllr)  # valina SC Decoder
 
         # calc error statistics
         Nbiterrs += np.sum(msg != decoded_bits)

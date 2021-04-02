@@ -1,5 +1,5 @@
 import numpy as np
-from ConventionalDecoder.encoder import PolarEncoder
+from PolarCodesUtils.encoder import PolarEncoder
 
 class FastSCDecoder():
 

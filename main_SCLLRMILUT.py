@@ -2,8 +2,8 @@ import numpy as np
 from QuantizeDecoder.QDensityEvolution_MMI import continous2discret
 from QuantizeDecoder.LLRMIQuantizer import LLRMIQuantizer
 from PolarDecoder.Decoder.SCLUTDecoder import SCLUTDecoder
-from ConventionalDecoder.encoder import PolarEncoder
-from ConventionalDecoder.CodeConstruction import PolarCodeConstructor
+from PolarCodesUtils.encoder import PolarEncoder
+from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
 import argparse
 import os
 import pickle as pkl

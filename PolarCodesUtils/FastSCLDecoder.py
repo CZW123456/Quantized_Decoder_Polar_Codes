@@ -1,6 +1,6 @@
 import numpy as np
 import copy
-from ConventionalDecoder.IdentifyNodes import NodeIdentifier
+from PolarCodesUtils.IdentifyNodes import NodeIdentifier
 
 class FastCASCLDecoder():
 

@@ -1,4 +1,4 @@
-from ConventionalDecoder.CodeConstruction import phi_inverse,  phi
+from PolarCodesUtils.CodeConstruction import phi_inverse,  phi
 import numpy as np
 from QuantizeDecoder.LloydQuantizer import LloydQuantizer
 from tqdm import tqdm

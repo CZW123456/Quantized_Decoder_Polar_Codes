@@ -8,8 +8,8 @@ from PolarDecoder.Decoder.CASCLLUTDecoder import CASCLLUTDecoder
 from quantizers.quantizer.MMI import MMIQuantizer
 from PolarBDEnc.Encoder.PolarEnc import PolarEnc
 from PolarBDEnc.Encoder.CRCEnc import CRCEnc
-from ConventionalDecoder.CodeConstruction import PolarCodeConstructor
-from ConventionalDecoder.IdentifyNodes import NodeIdentifier
+from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
+from PolarCodesUtils.IdentifyNodes import NodeIdentifier
 
 from torchtracer import Tracer
 from torchtracer.data import Config

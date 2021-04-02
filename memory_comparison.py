@@ -1,5 +1,5 @@
 import numpy as np
-from ConventionalDecoder.CodeConstruction import PolarCodeConstructor
+from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
 import argparse
 
 
