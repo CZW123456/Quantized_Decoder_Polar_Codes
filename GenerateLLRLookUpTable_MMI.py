@@ -50,8 +50,8 @@ def main():
         # Channel Quantizer
         mu = 2 / sigma_awgn ** 2
         sigma2_llr = 2 * mu
-        begin = -mu - 3 * np.sqrt(sigma2_llr)
-        end = mu + 3 * np.sqrt(sigma2_llr)
+        begin = -mu - 3*np.sqrt(sigma2_llr)
+        end = mu + 3*np.sqrt(sigma2_llr)
         quantizer = LLRMIQuantizer(quantize_channel)
         boundary, reconstruction, plx = quantizer.find_quantizer_awgn(mu, sigma2_llr, begin, end)
 

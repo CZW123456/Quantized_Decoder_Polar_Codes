@@ -57,13 +57,8 @@ class LLRMIQuantizer():
                 c2 = np.log2((1+np.exp(r[i]))/(1+np.exp(r[i-1])))
                 d[i] = sigma2 * (np.log(c2) - np.log(-c1)) / (2 * mu)
             I_after = self.compute_mutual_information(d, r, mu, sigma2)
-            # print("iteration = {:d}, I = {:f}".format(iter, I_after))
             if I_after - I_before < 1e-6:
                 break
-        # print("decision threshold")
-        # print(d)
-        # print("reconstruction level")
-        # print(r)
         p = np.zeros((2, self.K))
         for i in range(self.K):
             p[0, i] = 0.5 * (erf((d[i+1] - mu)/np.sqrt(2*sigma2)) - erf((d[i] - mu)/np.sqrt(2*sigma2)))

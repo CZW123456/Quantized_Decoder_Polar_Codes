@@ -176,11 +176,8 @@ class DegradeMerger():
                 P_up = np.array([[P_y0y1_u0_0], [P_y0y1_u0_1]]).squeeze().astype(np.float64)
                 P_up, permutation_indices = self.LR_sort(P_up)
 
-
                 P_up_after_erasure, lut_erasure, cnt = self.erasure_symbol_merge(P_up)
-                # print("node position = {:d}, erasure symbol count f = {:d}".format(node_posi, cnt))
                 P_up_after_merge, lut_merge  = self.degrading_merge(P_up)
-                # assert check_symmetric(P_up_after_merge)
 
                 LUT = self.get_lut(lut_erasure, lut_merge, permutation_indices, mode='f')
                 lut_f[node_posi] = [LUT for _ in range(num_lut_per_node)]
