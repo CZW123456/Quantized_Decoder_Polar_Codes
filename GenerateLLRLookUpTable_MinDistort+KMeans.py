@@ -1,6 +1,6 @@
 import numpy as np
-from utils import channel_transition_probability_table
-from quantizers.quantizer.MMI import MMIQuantizer
+from utils import channel_llr_density_table
+from quantizers.quantizer.LLROptLSQuantizer import LLRQuantizer
 from QuantizeDecoder.LLRQuantizedSC import LLRQuantizerSC
 import pickle as pkl
 import argparse
@@ -25,7 +25,7 @@ def main():
     DesignSNRdB = args.DesignSNRdB
     Quantizer = args.Quantizer
 
-    ChannelQuantizerDict = {"MMI": MMIQuantizer(px1=0.5, px_minus1=0.5)}
+    ChannelQuantizerDict = {"MinDistortion":LLRQuantizer()}
     DecoderQuantizerDict = {"MinDistortion": LLRQuantizerSC(N, QDecoder)}
 
     save_dir = "./LUT/{:s}/N{:d}_ChannelQ{:d}_DecoderQ{:d}".format(Quantizer, N, QChannelCompressed, QDecoder)
@@ -34,41 +34,27 @@ def main():
         os.makedirs(save_dir)
 
     # simulation parameter configuration
-    DesignSNR = 10 ** (DesignSNRdB / 10)  # linear scale snr
-    sigma = np.sqrt(1 / DesignSNR)  # Gaussian noise variance for current EbN0
+    DesignSNR = 10 ** (DesignSNRdB / 10)
+    sigma = np.sqrt(1 / DesignSNR)
 
     print("SNR = {:.1f} dB, Sigma2 = {:.3f}".format(DesignSNRdB, sigma))
 
-    # Channel Quantizer
+    # Channel Quantization
     E_LLR = 2 / (sigma ** 2)
     V_LLR = 2 * E_LLR
     D_LLR = np.sqrt(V_LLR)
     highest = E_LLR + 3 * D_LLR
     lowest = -E_LLR - 3 * D_LLR
-    ChannelQuantizer = ChannelQuantizerDict["MMI"]
-    pyx1, interval_x, = channel_transition_probability_table(QChannelUniform, lowest, highest, E_LLR, D_LLR)
-    pyx_minus1, _, = channel_transition_probability_table(QChannelUniform, lowest, highest, -E_LLR, D_LLR)
-    quanta_channel_uniform = interval_x[:-1] + 0.5 * (interval_x[1] - interval_x[0])
-    joint_prob = np.zeros((2, QChannelUniform)).astype(np.float32)
-    joint_prob[0] = pyx1
-    joint_prob[1] = pyx_minus1
-    channel_lut = ChannelQuantizer.find_opt_quantizer_AWGN(joint_prob, QChannelCompressed)
-    quanta_channel = np.zeros(QChannelCompressed)
-    channel_llr_density = np.zeros(QChannelCompressed)
-    for i in range(int(QChannelCompressed)):
-        begin = channel_lut[i]
-        end = channel_lut[i + 1]
-        pxz = 0.5 * (pyx1[begin:end] + pyx_minus1[begin:end])
-        quanta_channel[i] = np.sum(quanta_channel_uniform[begin:end] * pxz) / np.sum(pxz)
-        channel_llr_density[i] = np.sum(pxz)
-
-    # Generate LUT for every building block of polar codes
+    ChannelQuantizer = ChannelQuantizerDict[Quantizer]
+    pyx, x_discrete, quanta = channel_llr_density_table(QChannelUniform, lowest, highest, E_LLR, -E_LLR, D_LLR)
+    channel_llr_density, channel_llr_quanta, _, _ = ChannelQuantizer.find_OptLS_quantizer(pyx, quanta, QChannelUniform, QChannelCompressed)
     print("LUT Generation Begins...")
     decoder_quantizer = DecoderQuantizerDict[Quantizer]
     llr_density, llr_quanta, lut_fs, lut_gs = decoder_quantizer.run(channel_llr_density=channel_llr_density,
-                                                                    channel_llr_quanta=quanta_channel)
+                                                                    channel_llr_quanta=channel_llr_quanta)
     print("LUT Generation Finished...")
 
+    # save statistics
     save_path_f = os.path.join(save_dir, "LUT_F_SNRdB={:.0f}.pkl".format(DesignSNRdB))
     save_path_g = os.path.join(save_dir, "LUT_G_SNRdB={:.0f}.pkl".format(DesignSNRdB))
     save_path_llr_quanta = os.path.join(save_dir, "LLRQuanta_SNRdB={:.0f}.pkl".format(DesignSNRdB))

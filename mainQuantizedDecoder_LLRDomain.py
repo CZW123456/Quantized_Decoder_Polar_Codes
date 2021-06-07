@@ -1,11 +1,12 @@
 import numpy as np
-from utils import continous2discret, channel_transition_probability_table
+from bisect import bisect_left
+from utils import channel_llr_density_table
 from PolarDecoder.Decoder.SCLUTDecoder import SCLUTDecoder
 from PolarDecoder.Decoder.SCLLUTDecoder import SCLLUTDecoder
 from PolarDecoder.Decoder.FastSCLUTDecoder import FastSCLUTDecoder
 from PolarDecoder.Decoder.FastSCLLUTDecoder import FastSCLLUTDecoder
 from PolarDecoder.Decoder.CASCLLUTDecoder import CASCLLUTDecoder
-from quantizers.quantizer.MMI import MMIQuantizer
+from quantizers.quantizer.LLROptLSQuantizer import LLRQuantizer
 from PolarBDEnc.Encoder.PolarEnc import PolarEnc
 from PolarBDEnc.Encoder.CRCEnc import CRCEnc
 from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
@@ -93,6 +94,8 @@ gs = []
 for ele in lut_gs:
     gs.append(ele.tolist())
 
+
+ChannelQuantizerDict = {"MinDistortion":LLRQuantizer()}
 DecoderDict = {"SC-LUT": SCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
                "SCL-LUT": SCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
                "FastSC-LUT": FastSCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
@@ -135,22 +138,11 @@ for EbN0dB in EbN0dBTest:
     D_LLR = np.sqrt(V_LLR)
     highest = E_LLR + 3 * D_LLR
     lowest = -E_LLR - 3 * D_LLR
-    ChannelQuantizer = MMIQuantizer(px1=0.5, px_minus1=0.5)
-    pyx1, interval_x, = channel_transition_probability_table(QChannelUniform, lowest, highest, E_LLR, D_LLR)
-    pyx_minus1, _, = channel_transition_probability_table(QChannelUniform, lowest, highest, -E_LLR, D_LLR)
-    quanta_channel_uniform = interval_x[:-1] + 0.5 * (interval_x[1] - interval_x[0])
-    joint_prob = np.zeros((2, QChannelUniform)).astype(np.float32)
-    joint_prob[0] = pyx1
-    joint_prob[1] = pyx_minus1
-    channel_lut = ChannelQuantizer.find_opt_quantizer_AWGN(joint_prob, QChannelCompressed)
-    quanta_channel = np.zeros(QChannelCompressed)  # the quanta of each quantization interval after MMI compression of the channel LLR density
-    channel_llr_density = np.zeros(QChannelCompressed)
-    for i in range(int(QChannelCompressed)):
-        begin = channel_lut[i]
-        end = channel_lut[i + 1]
-        pxz = 0.5 * (pyx1[begin:end] + pyx_minus1[begin:end])
-        quanta_channel[i] = np.sum(quanta_channel_uniform[begin:end] * pxz) / np.sum(pxz)  # the quanta should be the mass center of the quantization interval
-        channel_llr_density[i] = np.sum(pxz)
+    ChannelQuantizer = ChannelQuantizerDict[Quantizer]
+
+    pyx, interval_x, quanta = channel_llr_density_table(QChannelUniform, lowest, highest, E_LLR, -E_LLR, D_LLR)
+    channel_llr_density, channel_llr_quanta, channel_lut, _ = ChannelQuantizer.find_OptLS_quantizer(pyx, quanta, QChannelUniform, QChannelCompressed)
+    channel_lut = channel_lut.squeeze()
 
     Nbiterrs = 0
     Nblkerrs = 0
@@ -175,7 +167,13 @@ for EbN0dB in EbN0dBTest:
         llr_symbols = np.zeros(N).astype(np.int32)
 
         for i in range(N):
-            llr_symbols[i] = continous2discret(llr[0, i], interval_x[channel_lut], QChannelCompressed - 1)
+            if llr[0, i] <= interval_x[0]:
+                llr_symbols[i] = 0
+            elif llr[0, i] >= interval_x[-1]:
+                llr_symbols[i] = QChannelCompressed - 1
+            else:
+                index = bisect_left(interval_x[:-1], llr[0, i])
+                llr_symbols[i] = channel_lut[index - 1]
 
         decoded_bits = polar_decoder.decode(llr_symbols)
 

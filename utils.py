@@ -26,10 +26,12 @@ def channel_transition_probability_table(M, low, high, mu, sigma):
         pyx[i] = np.sum(density) * delta
     return pyx, x_discrete
 
+
 def channel_llr_density_table(M, low, high, mu1, mu2, sigma):
     delta = 0.0001
     x_continuous = np.arange(low, high + delta, delta)
-    pyx_continuous = 0.5*(1/np.sqrt(2*np.pi*sigma**2)*np.exp(-(x_continuous-mu1)**2/(2*sigma**2)) + 1/np.sqrt(2*np.pi*sigma**2)*np.exp(-(x_continuous-mu2)**2/(2*sigma**2)))
+    pyx_continuous = 0.5*(1/np.sqrt(2*np.pi*sigma**2)*np.exp(-(x_continuous-mu1)**2/(2*sigma**2)) +
+                          1/np.sqrt(2*np.pi*sigma**2)*np.exp(-(x_continuous-mu2)**2/(2*sigma**2)))
     x_discrete = np.linspace(low, high, M + 1)
     quanta = np.zeros(M)
     pyx = np.zeros(M)

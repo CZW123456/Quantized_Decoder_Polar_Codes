@@ -77,9 +77,9 @@ polar_encoder = PolarEnc(N, K, frozenbits, msgbits)
 crc_encoder = CRCEnc(crc_n, crc_p)
 
 DesignEbN0dB = args.DesignSNRdB
-load_path_f = os.path.join(load_dir, "LUT_F_EbN0dB={:d}.pkl".format(DesignEbN0dB))
-load_path_g = os.path.join(load_dir, "LUT_G_EbN0dB={:d}.pkl".format(DesignEbN0dB))
-load_path_virtual_channel_llr = os.path.join(load_dir, "LLR_EbN0dB={:d}.pkl".format(DesignEbN0dB))
+load_path_f = os.path.join(load_dir, "LUT_F_EbN0dB={:.0f}.pkl".format(DesignEbN0dB))
+load_path_g = os.path.join(load_dir, "LUT_G_EbN0dB={:.0f}.pkl".format(DesignEbN0dB))
+load_path_virtual_channel_llr = os.path.join(load_dir, "LLR_EbN0dB={:.0f}.pkl".format(DesignEbN0dB))
 with open(load_path_f, "rb+") as f:
     lut_fs = pkl.load(f)
 with open(load_path_g, "rb+") as f:
