@@ -1,21 +1,17 @@
 import numpy as np
 from tqdm import tqdm
 from quantizers.quantizer.LLROptLSQuantizer import LLRQuantizer
-import matplotlib.pyplot as plt
-
 
 def entropy(x):
     return -np.sum(x * np.log2(x))
 
 class LLRQuantizerSC():
 
-    def __init__(self, N, K, v):
+    def __init__(self, N, v):
         self.N = N
-        self.K = K
         self.v = v
 
     def f(self, a, b):
-        # return np.log((1 + np.exp(a + b))/(np.exp(a) + np.exp(b)))
         return np.sign(a) * np.sign(b) * np.min([np.abs(a), np.abs(b)])
 
 
@@ -74,7 +70,7 @@ class LLRQuantizerSC():
             return lut
 
 
-    def generate_LUTs(self, channel_llr_density, channel_llr_quanta):
+    def run(self, channel_llr_density, channel_llr_quanta):
 
         n = int(np.log2(self.N))
         llr_density = np.zeros((n + 1, self.N, self.v))
@@ -113,22 +109,6 @@ class LLRQuantizerSC():
                 # Find the quantizers for compress the alphabet of the evolved LLR density
                 llr_compressed_density_f, llr_compressed_quanta_f, lut_merge_f, min_distortion_f = Quantizer.find_OptLS_quantizer(unique_llr_density_f, unique_llr_quanta_f, unique_llr_density_f.shape[0], self.v)
                 llr_compressed_density_g, llr_compressed_quanta_g, lut_merge_g, min_distortion_g = Quantizer.find_OptLS_quantizer(unique_llr_density_g, unique_llr_quanta_g, unique_llr_density_g.shape[0], self.v)
-
-                # entropy_f_before = entropy(unique_llr_density_f)
-                # entropy_f_after = entropy(llr_compressed_density_f)
-                #
-                # entropy_g_before = entropy(unique_llr_density_g)
-                # entropy_g_after = entropy(llr_compressed_density_g)
-
-                # plt.figure(1)
-                # plt.subplot(211)
-                # plt.stem(unique_llr_quanta_g.squeeze(), unique_llr_density_g.squeeze(), use_line_collection=True)
-                # plt.figure(1)
-                # plt.subplot(212)
-                # plt.stem(llr_compressed_quanta_g.squeeze(), llr_compressed_density_g.squeeze(), use_line_collection=True)
-                # plt.show()
-
-
 
                 # Get final LUT for f and g function
                 lut_f = self.get_LUT(lut_erasure_f, lut_merge_f, "f")

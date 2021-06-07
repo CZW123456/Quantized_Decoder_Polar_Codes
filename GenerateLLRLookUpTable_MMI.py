@@ -32,9 +32,6 @@ def main():
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    # code construction
-    constructor = PolarCodeConstructor(N, K, "./reliable sequence.txt")
-    frozenbits, msgbits, _, _ = constructor.PW()  # PW code construction
 
     # simulation parameter configuration
     EbN0dBTest = [0, 1, 2, 3, 4, 5]

@@ -23,15 +23,15 @@ import matplotlib.pyplot as plt
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--N", type=int, default=512)
+parser.add_argument("--N", type=int, default=256)
 parser.add_argument("--A", type=int, default=32)
 parser.add_argument("--L", type=int, default=8)
-parser.add_argument("--DecoderType", type=str, default="CA-SCL")
-parser.add_argument("--QuantizationAlgorithm", type=str, default="MinDistortion")
-parser.add_argument("--isCRC",type=str, default="yes")
+parser.add_argument("--DecoderType", type=str, default="SC-LUT")
+parser.add_argument("--Quantizer", type=str, default="MinDistortion")
+parser.add_argument("--isCRC",type=str, default="no")
 parser.add_argument("--QChannelUniform", type=int, default=128)
+parser.add_argument("--QChannelCompressed", type=int, default=16)
 parser.add_argument("--QDecoder", type=int, default=16)
-parser.add_argument("--QChannel", type=int, default=16)
 parser.add_argument("--DesignSNRdB", type=float, default=3.0)
 args = parser.parse_args()
 
@@ -41,28 +41,23 @@ crc_n = 24  # CRC check code length
 crc_p = [24, 23, 21, 20, 17, 15, 13, 12, 8, 4, 2, 1, 0]  # CRC generator polynomial
 
 # polar code parameter
-N = args.N  # code length
-A = args.A  # information bits amount
+N = args.N
+A = args.A
 if isCRC == "yes":
     K = args.A + crc_n
 else:
     K = args.A
-L = args.L # list size
-rate = A / N # true ode rate
+L = args.L
+rate = A / N # effective code rate
 DecoderType = args.DecoderType
-
-if isCRC == "yes" and DecoderType[:2] != "CA":
-    raise RuntimeError("You are using CRC added encoding scheme and it seems that you are not using CA-type"
-                       " decoding algorithm. Try using --DecoderType CA-SCL")
-if DecoderType[-2:] == "SC" and L != 1:
-    raise RuntimeError("You are using SC or FastSC decoder and it seems that you erroneously set L != 1. Try setting --L 1")
 
 # quantization parameter
 QDecoder = args.QDecoder
-QChannel = args.QChannel
+QChannelCompressed = args.QChannelCompressed
 QChannelUniform = args.QChannelUniform
+Quantizer = args.Quantizer
 
-load_dir = ""
+load_dir = "./LUT/{:s}/N{:d}_ChannelQ{:d}_DecoderQ{:d}".format(Quantizer, N, QChannelCompressed, QDecoder)
 
 # code construction
 constructor = PolarCodeConstructor(N, K, "./reliable sequence.txt")
@@ -76,10 +71,10 @@ node_type = node_identifier.run().astype(np.int32)
 polar_encoder = PolarEnc(N, K, frozenbits, msgbits)
 crc_encoder = CRCEnc(crc_n, crc_p)
 
-DesignEbN0dB = args.DesignSNRdB
-load_path_f = os.path.join(load_dir, "LUT_F_EbN0dB={:d}.pkl".format(DesignEbN0dB))
-load_path_g = os.path.join(load_dir, "LUT_G_EbN0dB={:d}.pkl".format(DesignEbN0dB))
-load_path_virtual_channel_llr = os.path.join(load_dir, "LLR_EbN0dB={:d}.pkl".format(DesignEbN0dB))
+DesignSNRdB = args.DesignSNRdB
+load_path_f = os.path.join(load_dir, "LUT_F_SNRdB={:.0f}.pkl".format(DesignSNRdB))
+load_path_g = os.path.join(load_dir, "LUT_G_SNRdB={:.0f}.pkl".format(DesignSNRdB))
+load_path_virtual_channel_llr = os.path.join(load_dir, "LLRQuanta_SNRdB={:.0f}.pkl".format(DesignSNRdB))
 with open(load_path_f, "rb+") as f:
     lut_fs = pkl.load(f)
 with open(load_path_g, "rb+") as f:
@@ -98,11 +93,11 @@ gs = []
 for ele in lut_gs:
     gs.append(ele.tolist())
 
-DecoderDict = {"SC-LUT-LLR": SCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
-               "SCL-LUT-LLR": SCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
-               "FastSC-LUT-LLR": FastSCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
-               "FastSCL-LUT-LLR": FastSCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
-               "CA-SCL-LUT-LLR": CASCLLUTDecoder(N, K, A, L, frozenbits_indicator, messagebits_indicator, crc_n, crc_p, fs, gs, virtual_channel_llrs)}
+DecoderDict = {"SC-LUT": SCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
+               "SCL-LUT": SCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
+               "FastSC-LUT": FastSCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
+               "FastSCL-LUT": FastSCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
+               "CASCL-LUT": CASCLLUTDecoder(N, K, A, L, frozenbits_indicator, messagebits_indicator, crc_n, crc_p, fs, gs, virtual_channel_llrs)}
 
 polar_decoder = DecoderDict[DecoderType]
 
@@ -111,20 +106,12 @@ experiment_name = "{:s}-N={:d}-A={:d}-L={:d}-CRC={:s}".format(DecoderType, N, A,
 if os.path.isdir(os.path.join(os.getcwd(), "simulation result", experiment_name)):
     shutil.rmtree(os.path.join(os.getcwd(), "simulation result", experiment_name))
 tracer = Tracer('simulation result').attach(experiment_name)
-configure = {"N": N,
-             "A": A,
-             "K": K,
-             "L": L,
-             }
+configure = {"N": N, "A": A, "K": K, "L": L}
 tracer.store(Config(configure))
 
 # simulation parameter configuration
 MaxBlock = 10**5
 EbN0dBTest = [0, 1, 2, 3, 4, 5]
-# BER/FER
-ber = []
-fer = []
-# timing variables
 total_blocks = 0
 BER = []
 BLER = []
@@ -155,10 +142,10 @@ for EbN0dB in EbN0dBTest:
     joint_prob = np.zeros((2, QChannelUniform)).astype(np.float32)
     joint_prob[0] = pyx1
     joint_prob[1] = pyx_minus1
-    channel_lut = ChannelQuantizer.find_opt_quantizer_AWGN(joint_prob, QChannelUniform)
-    quanta_channel = np.zeros(QChannel)  # the quanta of each quantization interval after MMI compression of the channel LLR density
-    channel_llr_density = np.zeros(QChannel)
-    for i in range(int(QChannel)):
+    channel_lut = ChannelQuantizer.find_opt_quantizer_AWGN(joint_prob, QChannelCompressed)
+    quanta_channel = np.zeros(QChannelCompressed)  # the quanta of each quantization interval after MMI compression of the channel LLR density
+    channel_llr_density = np.zeros(QChannelCompressed)
+    for i in range(int(QChannelCompressed)):
         begin = channel_lut[i]
         end = channel_lut[i + 1]
         pxz = 0.5 * (pyx1[begin:end] + pyx_minus1[begin:end])
@@ -171,22 +158,26 @@ for EbN0dB in EbN0dBTest:
     pbar = tqdm(range(MaxBlock))
     for _ in pbar:
 
-        msg = np.random.randint(low=0, high=2, size=K)  # generate 0-1 msg bits for valina SC
+        msg = np.random.randint(low=0, high=2, size=A)
 
-        cword = polar_encoder.encode(msg)
+        if isCRC == "yes":
+            msg_crc = crc_encoder.encode(msg)
+            cword = polar_encoder.encode(msg_crc).astype(np.int)
+        else:
+            cword = polar_encoder.encode(msg).astype(np.int)
 
-        bpsksymbols = 1 - 2 * cword  # BPSK modulation
+        bpsksymbols = 1 - 2 * cword
 
-        y = bpsksymbols + np.random.normal(loc=0, scale=sigma, size=(1, N))  # AWGN noisy channel
+        y = bpsksymbols + np.random.normal(loc=0, scale=sigma, size=(1, N))
 
-        llr = y * 2 / (sigma ** 2) # convert noisy symbol soft value to LLR
+        llr = y * 2 / (sigma ** 2)
 
         llr_symbols = np.zeros(N).astype(np.int32)
 
         for i in range(N):
-            llr_symbols[i] = continous2discret(llr[0, i], interval_x[channel_lut], QChannel - 1)
+            llr_symbols[i] = continous2discret(llr[0, i], interval_x[channel_lut], QChannelCompressed - 1)
 
-        decoded_bits = polar_decoder.decode(llr_symbols)  # valina SC Decoder
+        decoded_bits = polar_decoder.decode(llr_symbols)
 
         # calc error statistics
         Nbiterrs += np.sum(msg != decoded_bits)
@@ -204,7 +195,6 @@ for EbN0dB in EbN0dBTest:
         Nblocks += 1
         pbar.set_description("# Error Bits = {:d}, # Error Frame = {:d}".format(Nbiterrs, Nblkerrs))
         if Nblocks == MaxBlock:
-            # calc BER and FER in the given EbN0
             BER_sim = Nbiterrs / (K * Nblocks)
             BLER_sim = Nblkerrs / Nblocks
             print("EbN0(dB):{:.1f}, BER:{:f}, BLER:{:f}".format(EbN0dB, BER_sim, BLER_sim))
@@ -229,5 +219,3 @@ plt.xlabel("Eb/N0 (dB)")
 plt.ylabel("Block Error Rate (BLER)")
 plt.grid()
 tracer.store(plt.gcf(), "BLER.png")
-
-
