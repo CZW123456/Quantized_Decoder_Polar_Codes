@@ -59,7 +59,6 @@ class LloydQuantizer():
                 d[i] = 0.5 * (r[i-1] + r[i])
             # compute total distortion after the this run of optimization
             distortion_after = self.compute_total_distortion(d, r, mu_llr, sigma2_llr)
-            # print("Iter = {:d}, Total Distortion = {:f}".format(iter, distortion_after))
             if distortion_before - distortion_after < 1e-6:
                 break
         d[0] = -1e300

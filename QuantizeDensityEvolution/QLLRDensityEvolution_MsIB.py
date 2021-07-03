@@ -4,9 +4,6 @@ from tqdm import tqdm
 from PyIBQuantizer.inf_theory_tools import log2_stable
 from PyIBQuantizer.modified_sIB import modified_sIB
 from PyIBQuantizer.inf_theory_tools import mutual_information
-import pickle as pkl
-
-np.random.seed(1234)
 
 def continous2discret(x, xs, max_level):
     if x <= xs[0]:
@@ -34,11 +31,10 @@ def channel_transition_probability_table(M, low, high, mu, sigma):
     return pyx, x_discrete
 
 
-class ModifiedsIBSC():
+class QDensityEvolutionMsIB():
 
-    def __init__(self, N, K, quantization_level_decoder):
+    def __init__(self, N, quantization_level_decoder):
         self.N = N
-        self.K = K
         self.quantization_level_decoder = quantization_level_decoder
 
     def get_LUT(self, lut_merge, permutation, mode="f"):
@@ -76,7 +72,7 @@ class ModifiedsIBSC():
         return border_vectors
 
 
-    def find_quantizer(self, channel_symbol_probs):
+    def run(self, channel_symbol_probs):
         n = int(np.log2(self.N))
 
         virtual_channel_transition_probs = np.zeros((n, self.N, 2, self.quantization_level_decoder))
@@ -121,12 +117,6 @@ class ModifiedsIBSC():
 
                 lut, permutation, p_t_given_x, MI_XY, MI_XT, flag = quantizer.modified_sIB_run(0.5*P_in.transpose(), border_vectors)
 
-                if flag == True:
-                    with open("error_input.pkl", "wb") as f:
-                        pkl.dump(P_in, f)
-                        exit(1)
-
-
                 virtual_channel_transition_probs[level, offset:offset+num_lut_per_node] = p_t_given_x
 
                 virtual_channel_llrs[level, offset:offset+num_lut_per_node] = log2_stable(p_t_given_x[0, :]/(p_t_given_x[1, :]+1e-31))
@@ -153,14 +143,10 @@ class ModifiedsIBSC():
 
                 lut = self.get_LUT(np.array(lut), np.array(permutation), mode='g')
                 lut_gs[node_posi] = [lut for _ in range(num_lut_per_node)]
-            capacity = np.zeros(self.N)
-            for c in range(self.N):
-                capacity[c] = mutual_information(0.5*virtual_channel_transition_probs[level, c].transpose())
-            print("level = {:d}, mean_MI = {:3f}".format(level, np.mean(capacity)))
+            # capacity = np.zeros(self.N)
+            # for c in range(self.N):
+            #     capacity[c] = mutual_information(0.5*virtual_channel_transition_probs[level, c].transpose())
+            # print("level = {:d}, mean_MI = {:3f}".format(level, np.mean(capacity)))
 
         return lut_fs, lut_gs, virtual_channel_llrs, virtual_channel_transition_probs
 
-
-if __name__ == "__main__":
-    t = ModifiedsIBSC(128, 64, 32)
-    tmp = t.get_border_vector(1024, 32, 1)

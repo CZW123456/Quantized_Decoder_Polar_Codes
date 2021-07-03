@@ -3,7 +3,7 @@ from PyIBQuantizer.inf_theory_tools import mutual_information
 import argparse
 from PolarCodesUtils.CodeConstruction import PolarCodeConstructor
 from PolarCodesUtils.IdentifyNodes import NodeIdentifier
-from QuantizeDecoder.QDensityEvolution_MMI import channel_transition_probability_table
+from QuantizeDensityEvolution.QDensityEvolution_MMI import channel_transition_probability_table
 from quantizers.quantizer.MMI import MMIQuantizer
 import os
 import pickle as pkl

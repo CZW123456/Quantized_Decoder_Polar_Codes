@@ -117,7 +117,7 @@ class QDensityEvolutionMMI():
                 lut_gs[node_posi] = [lut for _ in range(num_lut_per_node)]
                 mean_I += (I_f_quantized + I_g_quantized)
 
-            print("level = {:d}, mean capacity = {:f}".format(level, mean_I / num_node_cur_level / 2))
+            # print("level = {:d}, mean capacity = {:f}".format(level, mean_I / num_node_cur_level / 2))
 
         return lut_fs, lut_gs, virtual_channel_llrs, virtual_channel_transition_probs
 

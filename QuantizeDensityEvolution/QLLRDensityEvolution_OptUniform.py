@@ -1,6 +1,6 @@
 from PolarCodesUtils.CodeConstruction import phi_inverse,  phi
 import numpy as np
-from QuantizeDecoder.OptUniformQuantizerGaussian import OptUniformQuantizerGaussian
+from QuantizeDensityEvolution.OptUniformQuantizerGaussian import OptUniformQuantizerGaussian
 
 class LLRLSUniformQuantizer():
 

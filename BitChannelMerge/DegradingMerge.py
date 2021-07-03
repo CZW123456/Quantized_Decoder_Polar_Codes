@@ -1,16 +1,13 @@
 import numpy as np
 from tqdm import tqdm
-from BitChannelMerge.utils import check_symmetric
-from PyIBQuantizer.inf_theory_tools import log2_stable, mutual_information
+from PyIBQuantizer.inf_theory_tools import log2_stable
 
 class DegradeMerger():
 
-    def __init__(self, mu, N, W):
-        assert W.shape[0] == 2
-        self.mu = mu
-        self.v  = mu//2
+    def __init__(self, N, QDecoder):
+        self.mu = QDecoder
+        self.v  = QDecoder//2
         self.N = N
-        self.W = W
 
     def LR_sort(self, W):
         L = W.shape[1]
@@ -72,7 +69,6 @@ class DegradeMerger():
                     a2 = W[0, i+1]
                     b2 = W[1, i+1]
                     deltaI = self.capacity(a1, b1) + self.capacity(a2, b2) - self.capacity(a1+a2, b1+b2)
-                    # print("a1 = {:4e} b1 = {:4e} a2 = {:4e} b2 = {:4e}".format(a1, b1, a2, b2))
                     if deltaI < min_deltaI:
                         min_deltaI = deltaI
                         min_index = i
@@ -137,11 +133,11 @@ class DegradeMerger():
                 LUT[u0, y, x] = i
             return LUT
 
-    def bit_channel_degrading_run(self):
+    def run(self, W):
         n = int(np.log2(self.N))
         virtual_channel_transition_probs = np.zeros((n, self.N, 2, self.mu))
         virtual_channel_llrs = np.zeros((n, self.N, self.mu))
-        W_AWGN = np.expand_dims(self.W, axis=0).repeat(self.N, axis=0)
+        W_AWGN = np.expand_dims(W, axis=0).repeat(self.N, axis=0)
         lut_f = {}
         lut_g = {}
         for level in tqdm(range(n)):
@@ -170,8 +166,6 @@ class DegradeMerger():
                 P_y0y1_u0_0 = 0.5 * (np.kron(P_y0_x0[0], P_y1_x1[0]) + np.kron(P_y0_x0[1], P_y1_x1[1]))
                 P_y0y1_u0_1 = 0.5 * (np.kron(P_y0_x0[1], P_y1_x1[0]) + np.kron(P_y0_x0[0], P_y1_x1[1]))
 
-                if node_posi == 0:
-                    print()
 
                 P_up = np.array([[P_y0y1_u0_0], [P_y0y1_u0_1]]).squeeze().astype(np.float64)
                 P_up, permutation_indices = self.LR_sort(P_up)
@@ -205,7 +199,5 @@ class DegradeMerger():
                 virtual_channel_transition_probs[level, offset + stride:offset + stride + num_lut_per_node] = P_down_after_merge
                 virtual_channel_llrs[level, offset + stride:offset + stride + num_lut_per_node] = log2_stable(P_down_after_merge[0] / (P_down_after_merge[1]))
 
-        Pe = np.zeros(self.N)
-        for i in range(self.N):
-            Pe[i] = 0.5 * np.sum(np.min(virtual_channel_transition_probs[-1, i, :], axis=0))
-        return virtual_channel_llrs, Pe, lut_f, lut_g
+
+        return lut_f, lut_g, virtual_channel_llrs, virtual_channel_transition_probs

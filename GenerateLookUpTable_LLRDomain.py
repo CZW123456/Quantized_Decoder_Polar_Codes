@@ -1,7 +1,7 @@
 import numpy as np
 from utils import channel_llr_density_table
 from quantizers.quantizer.LLROptLSQuantizer import LLRQuantizer
-from QuantizeDecoder.LLRQuantizedSC import LLRQuantizerSC
+from QuantizeDensityEvolution.QLLRDensityEvolution_MinDistortion import LLRQuantizerSC
 import pickle as pkl
 import argparse
 import os
@@ -25,7 +25,7 @@ def main():
     DesignSNRdB = args.DesignSNRdB
     Quantizer = args.Quantizer
 
-    ChannelQuantizerDict = {"MinDistortion":LLRQuantizer()}
+    ChannelQuantizerDict = {"MinDistortion": LLRQuantizer()}
     DecoderQuantizerDict = {"MinDistortion": LLRQuantizerSC(N, QDecoder)}
 
     save_dir = "./LUT/{:s}/N{:d}_ChannelQ{:d}_DecoderQ{:d}".format(Quantizer, N, QChannelCompressed, QDecoder)
@@ -50,8 +50,7 @@ def main():
     channel_llr_density, channel_llr_quanta, _, _ = ChannelQuantizer.find_OptLS_quantizer(pyx, quanta, QChannelUniform, QChannelCompressed)
     print("LUT Generation Begins...")
     decoder_quantizer = DecoderQuantizerDict[Quantizer]
-    llr_density, llr_quanta, lut_fs, lut_gs = decoder_quantizer.run(channel_llr_density=channel_llr_density,
-                                                                    channel_llr_quanta=channel_llr_quanta)
+    llr_density, llr_quanta, lut_fs, lut_gs = decoder_quantizer.run(channel_llr_density=channel_llr_density, channel_llr_quanta=channel_llr_quanta)
     print("LUT Generation Finished...")
 
     # save statistics

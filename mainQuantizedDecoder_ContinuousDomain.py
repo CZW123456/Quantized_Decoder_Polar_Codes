@@ -1,13 +1,14 @@
 import numpy as np
+
 from PolarDecoder.Decoder.SCLUniformQuantizedDecoder import SCLUniformQuantizedDecoder
 from PolarDecoder.Decoder.SCUniformQuantizedDecoder import SCUniformQuantizedDecoder
-from QuantizeDecoder.OptUniformQuantizerGaussian import OptUniformQuantizerGaussian
-from QuantizeDecoder.LLRLSUniformSC import LLRLSUniformQuantizer
-
 from PolarDecoder.Decoder.SCLLloydQuantizedDecoder import SCLLloydQuantizedDecoder
 from PolarDecoder.Decoder.SCLloydQuantizedDecoder import SCLloydQuantizedDecoder
-from QuantizeDecoder.LloydQuantizer import LloydQuantizer
-from QuantizeDecoder.LLRLloydSC import LLRLloydGA
+
+from QuantizeDensityEvolution.OptUniformQuantizerGaussian import OptUniformQuantizerGaussian
+from QuantizeDensityEvolution.QLLRDensityEvolution_OptUniform import LLRLSUniformQuantizer
+from QuantizeDensityEvolution.LloydQuantizer import LloydQuantizer
+from QuantizeDensityEvolution.QLLRDensityEvolution_Lloyd import LLRLloydGA
 
 from PolarBDEnc.Encoder.PolarEnc import PolarEnc
 from PolarBDEnc.Encoder.CRCEnc import CRCEnc
@@ -21,7 +22,7 @@ import argparse
 import os
 import shutil
 from tqdm import tqdm
-import matplotlib.pyplot as plt
+
 
 def QUniform(llr, M, r):
     llr[np.abs(llr) <= M] = (np.floor(llr[np.abs(llr) <= M] / r).astype(int) + 1 / 2) * r
@@ -45,9 +46,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--N", type=int, default=512)
 parser.add_argument("--A", type=int, default=32)
 parser.add_argument("--L", type=int, default=8)
-parser.add_argument("--DecoderType", type=str, default="SC-Uniform-LLR")
+parser.add_argument("--DecoderType", type=str, default="SC-Lloyd")
 parser.add_argument("--QuantizationAlgorithm", type=str, default="Uniform")
-parser.add_argument("--isCRC",type=str, default="yes")
+parser.add_argument("--isCRC",type=str, default="no")
 parser.add_argument("--QChannelUniform", type=int, default=128)
 parser.add_argument("--QDecoder", type=int, default=16)
 parser.add_argument("--QChannel", type=int, default=16)
@@ -144,9 +145,6 @@ tracer.store(Config(configure))
 # simulation parameter configuration
 MaxBlock = 10**5
 EbN0dBTest = [0, 1, 2, 3, 4, 5]
-# BER/FER
-ber = []
-fer = []
 # timing variables
 total_blocks = 0
 BER = []
@@ -165,7 +163,7 @@ for EbN0dB in EbN0dBTest:
     EbN0 = 10**(EbN0dB/10)
     sigma = np.sqrt(1/(2*rate*EbN0))
 
-    # Build physical channel quantizer for LLR soft values under the specific Eb/N0, here we build MMI quantizer for all quantized decoder
+    # Build physical channel quantizer for LLR soft values under the specific Eb/N0
     mu_llr = 2 / sigma ** 2
     sigma2_llr = 2 * mu_llr
 
@@ -197,7 +195,7 @@ for EbN0dB in EbN0dBTest:
 
         qllr = q(llr, boundary_channel, reconstruct_channel)
 
-        decoded_bits = polar_decoder.decode(qllr)  # valina SC Decoder
+        decoded_bits = polar_decoder.decode(qllr)
 
         # calc error statistics
         Nbiterrs += np.sum(msg != decoded_bits)
@@ -224,21 +222,4 @@ for EbN0dB in EbN0dBTest:
             tracer.log("{:.6f}".format(BER_sim), file="BER")
             tracer.log("{:.6f}".format(BLER_sim), file="BLER")
     total_blocks += Nblocks
-
-plt.figure(dpi=300)
-plt.semilogy(EbN0dBTest, BER, color='r', linestyle='-', marker="*", markersize=5)
-plt.legend(["{:s}".format(DecoderType)])
-plt.xlabel("Eb/N0 (dB)")
-plt.ylabel("Bit Error Rate (BER)")
-plt.grid()
-tracer.store(plt.gcf(), "BER.png")
-
-plt.figure(dpi=300)
-plt.semilogy(EbN0dBTest, BLER, color='r', linestyle='-', marker="*", markersize=5)
-plt.legend(["{:s}".format(DecoderType)])
-plt.xlabel("Eb/N0 (dB)")
-plt.ylabel("Block Error Rate (BLER)")
-plt.grid()
-tracer.store(plt.gcf(), "BLER.png")
-
 

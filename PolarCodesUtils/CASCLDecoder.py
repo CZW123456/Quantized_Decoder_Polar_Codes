@@ -114,8 +114,6 @@ class CASCLDecoder():
         idx = np.argsort(PML)
         for i in idx:
             _, check_code = self.crc.encode(ucap[i, n, self.msg_posi][:self.A])
-            # print(ucap[i, n, self.msg_posi][:self.A])
-            # print(check_code)
             if np.all(check_code == ucap[i, n, self.msg_posi][self.A:]):
                 decoded_bits = ucap[i, n, self.msg_posi][:self.A]  # extract high position bits in crc coded codewords
                 return decoded_bits

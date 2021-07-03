@@ -23,12 +23,12 @@ import matplotlib.pyplot as plt
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--N", type=int, default=512)
-parser.add_argument("--A", type=int, default=32)
+parser.add_argument("--N", type=int, default=16)
+parser.add_argument("--A", type=int, default=8)
 parser.add_argument("--L", type=int, default=8)
 parser.add_argument("--DecoderType", type=str, default="CA-SCL")
-parser.add_argument("--QuantizationAlgorithm", type=str, default="MMI")
-parser.add_argument("--isCRC",type=str, default="yes")
+parser.add_argument("--QuantizationAlgorithm", type=str, default="MsIB")
+parser.add_argument("--isCRC",type=str, default="no")
 parser.add_argument("--QChannelUniform", type=int, default=128)
 parser.add_argument("--QDecoder", type=int, default=16)
 parser.add_argument("--QChannel", type=int, default=16)
@@ -61,8 +61,9 @@ if DecoderType[-2:] == "SC" and L != 1:
 QDecoder = args.QDecoder
 QChannel = args.QChannel
 QChannelUniform = args.QChannelUniform
+QuantizationAlgorithm = args.QuantizationAlgorithm
 
-load_dir = ""
+load_dir = "./LUT/{:s}/N{:d}_ChannelQ{:d}_DecoderQ{:d}".format(QuantizationAlgorithm, N, QChannel, QDecoder)
 
 # code construction
 constructor = PolarCodeConstructor(N, K, "./reliable sequence.txt")
@@ -77,9 +78,9 @@ polar_encoder = PolarEnc(N, K, frozenbits, msgbits)
 crc_encoder = CRCEnc(crc_n, crc_p)
 
 DesignEbN0dB = args.DesignSNRdB
-load_path_f = os.path.join(load_dir, "LUT_F_EbN0dB={:.0f}.pkl".format(DesignEbN0dB))
-load_path_g = os.path.join(load_dir, "LUT_G_EbN0dB={:.0f}.pkl".format(DesignEbN0dB))
-load_path_virtual_channel_llr = os.path.join(load_dir, "LLR_EbN0dB={:.0f}.pkl".format(DesignEbN0dB))
+load_path_f = os.path.join(load_dir, "LUT_F_SNRdB={:.1f}.pkl".format(DesignEbN0dB))
+load_path_g = os.path.join(load_dir, "LUT_G_SNRdB={:.1f}.pkl".format(DesignEbN0dB))
+load_path_virtual_channel_llr = os.path.join(load_dir, "LLR_SNRdB={:.1f}.pkl".format(DesignEbN0dB))
 with open(load_path_f, "rb+") as f:
     lut_fs = pkl.load(f)
 with open(load_path_g, "rb+") as f:

@@ -1,6 +1,6 @@
 import numpy as np
 import PyIBQuantizer.inf_theory_tools as inf_tool
-from IBQuantizer.Quantizer.ModifiedSIB import ModifiedSIBQuantizer
+
 
 class modified_sIB():
 
@@ -169,8 +169,6 @@ class modified_sIB():
             I_YT[run] = inf_tool.mutual_information(p_ty)
             I_TX[run] = inf_tool.mutual_information(p_xt)
 
-            # print("run = {:d}, I(X;T) = {:f}".format(run, I_TX[run]))
-
             ib_fct[run] = I_YT[run] / (-self.beta) + I_TX[run]
 
         # choose the run maximizing the Information Bottleneck functional
@@ -187,49 +185,3 @@ class modified_sIB():
 
 
         return lut, permutation, p_t_given_x, MI_XY, MI_XT, flag
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    from scipy.stats import norm
-    card_Y = 256
-    card_T = 16
-    mu1 = 1
-    mu2 = -1
-    n_sigma = 100
-    sigma = 0.1
-    sigmas = np.linspace(0.1, 0.6, n_sigma)
-    amplitudes = np.array([-1, +1])
-    p_x = np.array([0.5, 0.5])
-    Qs = []
-
-    y = np.linspace(norm.ppf(1e-12, loc=amplitudes.min(), scale=np.sqrt(sigma)), norm.ppf(1 - 1e-12, loc=amplitudes.max(), scale=np.sqrt(sigma)), card_Y)  # define the eventspace
-    delta_y = np.abs(y[1] - y[0])
-
-    p_y_given_x = np.zeros((2, y.shape[0]))
-    for x_idx, x in enumerate(amplitudes):
-        p_y_given_x[x_idx, :] = norm.pdf(y, loc=x, scale=np.sqrt(sigma)) * delta_y
-
-    p_y_and_x = p_y_given_x * np.expand_dims(p_x, axis=1).repeat(card_Y, axis=1)
-    p_y_and_x /= p_y_and_x.sum()
-
-    quantizer = ModifiedSIBQuantizer(card_T, 5, 1e30)
-    quantizer_py = modified_sIB(card_T, 1e30, 5)
-    border_vectors = []
-    for i in range(5):
-        alpha = np.ones(int(card_T)) * 1
-        border_vec = np.ones(alpha.shape[0]) * card_Y
-        while border_vec[:-1].cumsum().max() >= card_Y:
-            border_vec = np.floor(np.random.dirichlet(alpha, 1).transpose() * (card_Y))
-            border_vec[border_vec == 0] = 1
-        # obtain a sequential border vector like [244, 355, 436, ..., 2000] in R^{card_T}
-        border_vec = np.hstack([border_vec[:-1].cumsum(), card_Y]).astype(np.int)
-        border_vectors.append(border_vec.tolist())
-    lut, permutation, p_t_given_x, MI_XY, MI_XT = quantizer_py.modified_sIB_run(p_y_and_x.transpose(), border_vectors)
-    print("Original Mutual Information = {:f}".format(MI_XY))
-    print("Quantized Mutual Information = {:f}".format(MI_XT))
-
-    plt.stem(np.arange(card_T), np.log(p_t_given_x[0] / p_t_given_x[1]), use_line_collection=True)
-    plt.title("Meaning p(t|x) as LLRs")
-    plt.xlabel("t")
-    plt.ylabel("L(x|t)")
-    plt.show()

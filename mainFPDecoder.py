@@ -1,5 +1,5 @@
 '''
-This file is the entrance for Float-Point decoders for Polar Codes.
+This file is the entrance for float point decoders for Polar Codes.
 '''
 import numpy as np
 from PolarDecoder.Decoder.FastSCDecoder import FastSCDecoder

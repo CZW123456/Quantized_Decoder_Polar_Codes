@@ -1,6 +1,6 @@
 from PolarCodesUtils.CodeConstruction import phi_inverse,  phi
 import numpy as np
-from QuantizeDecoder.LloydQuantizer import LloydQuantizer
+from QuantizeDensityEvolution.LloydQuantizer import LloydQuantizer
 from tqdm import tqdm
 
 class LLRLloydGA():
@@ -30,13 +30,9 @@ class LLRLloydGA():
                 poffset = num_bits_parent_node * node
                 mu = mu_llr[level - 1, poffset]
                 mu_f = phi_inverse(1 - (1 - phi(mu)) ** 2)
-                opt_boundary_f, opt_reconstruct_f = Q.find_quantizer_gaussian(mu_f, 2*mu_f,
-                                                                              begin=-mu_f - 3 * np.sqrt(2*mu_f),
-                                                                              end=mu_f + 3 * np.sqrt(2*mu_f))
+                opt_boundary_f, opt_reconstruct_f = Q.find_quantizer_gaussian(mu_f, 2*mu_f, begin=-mu_f - 3 * np.sqrt(2*mu_f), end=mu_f + 3 * np.sqrt(2*mu_f))
                 mu_g = 2 * mu
-                opt_boundary_g, opt_reconstruct_g = Q.find_quantizer_gaussian(mu_g, 2*mu_g,
-                                                                              begin=-mu_g - 3 * np.sqrt(2*mu_g),
-                                                                              end=mu_g + 3 * np.sqrt(2*mu_g))
+                opt_boundary_g, opt_reconstruct_g = Q.find_quantizer_gaussian(mu_g, 2*mu_g, begin=-mu_g - 3 * np.sqrt(2*mu_g), end=mu_g + 3 * np.sqrt(2*mu_g))
                 mu_llr[level, lnode * num_bits_cur_node:(lnode + 1) * num_bits_cur_node] = mu_f
                 mu_llr[level, rnode * num_bits_cur_node:(rnode + 1) * num_bits_cur_node] = mu_g
                 decoder_boundary_f[pnode_posi, :] = opt_boundary_f
