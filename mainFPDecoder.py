@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--N", type=int, default=512)
 parser.add_argument("--A", type=int, default=32)
 parser.add_argument("--L", type=int, default=8)
-parser.add_argument("--DecoderType", type=str, default="CA-SCL")
+parser.add_argument("--DecoderType", type=str, default="CASCL")
 parser.add_argument("--isCRC",type=str, default="yes")
 args = parser.parse_args()
 
@@ -44,12 +44,6 @@ L = args.L # list size
 rate = A / N # true ode rate
 DecoderType = args.DecoderType
 
-if isCRC == "yes" and DecoderType[:2] != "CA":
-    raise RuntimeError("You are using CRC added encoding scheme and it seems that you are not using CA-type"
-                       " decoding algorithm. Try using --DecoderType CA-SCL")
-if DecoderType[-2:] == "SC" and L != 1:
-    raise RuntimeError("You are using SC or FastSC decoder and it seems that you erroneously set L != 1. Try setting --L 1")
-
 # code constructor
 constructor = PolarCodeConstructor(N, K, "./reliable sequence.txt")
 frozenbits, msgbits, frozenbits_indicator, messagebits_indicator = constructor.PW()  # PW code construction
@@ -65,24 +59,22 @@ DecoderDict = {"SC": SCDecoder(N, K, frozenbits_indicator, messagebits_indicator
                "SCL": SCLDecoder(N, K, L, frozenbits_indicator, messagebits_indicator),
                "FastSC": FastSCDecoder(N, K, frozenbits_indicator, messagebits_indicator, node_type),
                "FastSCL": FastSCLDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, node_type),
-               "CA-SCL": CASCLDecoder(N, K, A, L, frozenbits_indicator, messagebits_indicator, crc_n, crc_p)}
+               "CASCL": CASCLDecoder(N, K, A, L, frozenbits_indicator, messagebits_indicator, crc_n, crc_p)}
 
 polar_decoder = DecoderDict[DecoderType]
 
+if not os.path.isdir(os.path.join(os.getcwd(), "simulation result")):
+    os.makedirs(os.path.join(os.getcwd(), "simulation result"))
 experiment_name = "{:s}-N={:d}-A={:d}-L={:d}-CRC={:s}".format(DecoderType, N, A, L, isCRC)
 if os.path.isdir(os.path.join(os.getcwd(), "simulation result", experiment_name)):
     shutil.rmtree(os.path.join(os.getcwd(), "simulation result", experiment_name))
 tracer = Tracer('simulation result').attach(experiment_name)
-configure = {"N": N,
-             "A": A,
-             "K": K,
-             "L": L,
-             }
+configure = {"N": N, "A": A, "K": K, "L": L}
 tracer.store(Config(configure))
 
 # simulation parameter configuration
 MaxBlock = 10**5
-EbN0dBtest = [0, 1, 2, 3, 4]
+EbN0dBTest = [0, 1, 2, 3, 4]
 BER = []
 BLER = []
 total_blocks = 0
@@ -95,7 +87,7 @@ print("Using CRC? {:s}".format(isCRC))
 print("CRC Length = {:d}".format(crc_n))
 print("-------------------------")
 # start simulation
-for EbN0dB in EbN0dBtest:
+for EbN0dB in EbN0dBTest:
     EbN0 = 10**(EbN0dB/10)
     sigma = np.sqrt(1/(2*rate*EbN0))
     Nbiterrs = 0
@@ -147,10 +139,9 @@ for EbN0dB in EbN0dBtest:
 
     total_blocks += Nblocks
 
-# save BER/BLER curve
-
+# Save BER/BLER curve
 plt.figure(dpi=300)
-plt.semilogy(EbN0dBtest, BER, color='r', linestyle='-', marker="*", markersize=5)
+plt.semilogy(EbN0dBTest, BER, color='r', linestyle='-', marker="*", markersize=5)
 plt.legend(["{:s}".format(DecoderType)])
 plt.xlabel("Eb/N0 (dB)")
 plt.ylabel("Bit Error Rate (BER)")
@@ -158,7 +149,7 @@ plt.grid()
 tracer.store(plt.gcf(), "BER.png")
 
 plt.figure(dpi=300)
-plt.semilogy(EbN0dBtest, BLER, color='r', linestyle='-', marker="*", markersize=5)
+plt.semilogy(EbN0dBTest, BLER, color='r', linestyle='-', marker="*", markersize=5)
 plt.legend(["{:s}".format(DecoderType)])
 plt.xlabel("Eb/N0 (dB)")
 plt.ylabel("Block Error Rate (BLER)")

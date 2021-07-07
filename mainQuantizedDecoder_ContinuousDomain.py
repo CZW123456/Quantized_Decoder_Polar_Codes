@@ -23,6 +23,8 @@ import os
 import shutil
 from tqdm import tqdm
 
+import matplotlib.pyplot as plt
+
 
 def QUniform(llr, M, r):
     llr[np.abs(llr) <= M] = (np.floor(llr[np.abs(llr) <= M] / r).astype(int) + 1 / 2) * r
@@ -41,18 +43,17 @@ def QLloyd(llrs, boundary, reconstruct):
     quantized_result = np.asarray(quantized_result)
     return quantized_result
 
-
 parser = argparse.ArgumentParser()
-parser.add_argument("--N", type=int, default=512)
-parser.add_argument("--A", type=int, default=32)
-parser.add_argument("--L", type=int, default=8)
+parser.add_argument("--N", type=int, default=128, help="code length")
+parser.add_argument("--A", type=int, default=32, help="# information bits")
+parser.add_argument("--L", type=int, default=8, help="list size for SCL decoding")
 parser.add_argument("--DecoderType", type=str, default="SC-Lloyd")
-parser.add_argument("--QuantizationAlgorithm", type=str, default="Uniform")
-parser.add_argument("--isCRC",type=str, default="no")
-parser.add_argument("--QChannelUniform", type=int, default=128)
-parser.add_argument("--QDecoder", type=int, default=16)
-parser.add_argument("--QChannel", type=int, default=16)
-parser.add_argument("--DesignSNRdB", type=float, default=3.0)
+parser.add_argument("--QuantizationAlgorithm", type=str, default="Lloyd")
+parser.add_argument("--isCRC",type=str, default="no", help="Whether Use CRC: yes/no")
+parser.add_argument("--QChannelUniform", type=int, default=128, help="Uniform Channel Quantization Resolution: Default Option is best")
+parser.add_argument("--QDecoder", type=int, default=16, help="Decoder Quantization Resolution: 8 (3-bit) / 16 (4-bit) / 32 (5-bit)")
+parser.add_argument("--QChannel", type=int, default=16, help="Channel Compression Quantization Resolution:8 (3-bit) / 16 (4-bit) / 32 (5-bit)")
+parser.add_argument("--DesignSNRdB", type=float, default=3.0, help="Design SNR for Lookup Table")
 args = parser.parse_args()
 
 # CRC encoding scheme in 5G NR PDCCH polar encoding
@@ -72,11 +73,6 @@ rate = A / N # true ode rate
 DecoderType = args.DecoderType
 QuantizationAlgorithm = args.QuantizationAlgorithm
 
-if isCRC == "yes" and DecoderType[:2] != "CA":
-    raise RuntimeError("You are using CRC added encoding scheme and it seems that you are not using CA-type"
-                       " decoding algorithm. Try using --DecoderType CA-SCL")
-if DecoderType[-2:] == "SC" and L != 1:
-    raise RuntimeError("You are using SC or FastSC decoder and it seems that you erroneously set L != 1. Try setting --L 1")
 
 # quantization parameter
 QDecoder = args.QDecoder
@@ -122,8 +118,7 @@ elif QuantizationAlgorithm == "Lloyd":
                                                 decoder_boundary_g, decoder_reconstruct_f, decoder_reconstruct_g, QDecoder)
     elif DecoderType.split("-")[0] == "SCL":
         polar_decoder = SCLLloydQuantizedDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, decoder_boundary_f,
-                                                 decoder_boundary_g, decoder_reconstruct_f, decoder_reconstruct_g,
-                                                 QDecoder)
+                                                 decoder_boundary_g, decoder_reconstruct_f, decoder_reconstruct_g, QDecoder)
     else:
         raise RuntimeError("DecoderType should begin with either SC or SCL")
 else:
@@ -131,15 +126,13 @@ else:
 
 QFuncDict = {"Uniform":QUniform, "Lloyd":QLloyd}
 # configure experiment tracer
+if not os.path.isdir(os.path.join(os.getcwd(), "simulation result")):
+    os.makedirs(os.path.join(os.getcwd(), "simulation result"))
 experiment_name = "{:s}-N={:d}-A={:d}-L={:d}-CRC={:s}".format(DecoderType, N, A, L, isCRC)
 if os.path.isdir(os.path.join(os.getcwd(), "simulation result", experiment_name)):
     shutil.rmtree(os.path.join(os.getcwd(), "simulation result", experiment_name))
 tracer = Tracer('simulation result').attach(experiment_name)
-configure = {"N": N,
-             "A": A,
-             "K": K,
-             "L": L,
-             }
+configure = {"N": N, "A": A, "K": K, "L": L}
 tracer.store(Config(configure))
 
 # simulation parameter configuration
@@ -171,7 +164,8 @@ for EbN0dB in EbN0dBTest:
         reconstruct_channel = UniformChannelQuantizer.find_optimal_interval_bimodal_Gaussian(mu_llr, sigma2_llr, 30)
         boundary_channel = (QChannel // 2 - 1) * reconstruct_channel
     elif QuantizationAlgorithm == "Lloyd":
-        boundary_channel, reconstruct_channel = LloydChannelQuantizer.find_quantizer_gaussian(mu_llr, sigma2_llr,
+        boundary_channel, reconstruct_channel = LloydChannelQuantizer.find_quantizer_gaussian(mu_llr,
+                                                                                              sigma2_llr,
                                                                                               begin=-mu_llr - 3*np.sqrt(sigma2_llr),
                                                                                               end=mu_llr + 3*np.sqrt(sigma2_llr))
     else:
@@ -185,7 +179,7 @@ for EbN0dB in EbN0dBTest:
 
         msg = np.random.randint(low=0, high=2, size=K)  # generate 0-1 msg bits for valina SC
 
-        cword = polar_encoder.encode(msg)
+        cword = polar_encoder.encode(msg).astype(np.int)
 
         bpsksymbols = 1 - 2 * cword  # BPSK modulation
 
@@ -223,3 +217,19 @@ for EbN0dB in EbN0dBTest:
             tracer.log("{:.6f}".format(BLER_sim), file="BLER")
     total_blocks += Nblocks
 
+# save BER/BLER curve
+plt.figure(dpi=300)
+plt.semilogy(EbN0dBTest, BER, color='r', linestyle='-', marker="*", markersize=5)
+plt.legend(["{:s}".format(DecoderType)])
+plt.xlabel("Eb/N0 (dB)")
+plt.ylabel("Bit Error Rate (BER)")
+plt.grid()
+tracer.store(plt.gcf(), "BER.png")
+
+plt.figure(dpi=300)
+plt.semilogy(EbN0dBTest, BLER, color='r', linestyle='-', marker="*", markersize=5)
+plt.legend(["{:s}".format(DecoderType)])
+plt.xlabel("Eb/N0 (dB)")
+plt.ylabel("Block Error Rate (BLER)")
+plt.grid()
+tracer.store(plt.gcf(), "BLER.png")

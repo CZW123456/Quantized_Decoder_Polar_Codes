@@ -23,16 +23,16 @@ import matplotlib.pyplot as plt
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--N", type=int, default=16)
-parser.add_argument("--A", type=int, default=8)
-parser.add_argument("--L", type=int, default=8)
-parser.add_argument("--DecoderType", type=str, default="CA-SCL")
-parser.add_argument("--QuantizationAlgorithm", type=str, default="MsIB")
-parser.add_argument("--isCRC",type=str, default="no")
-parser.add_argument("--QChannelUniform", type=int, default=128)
-parser.add_argument("--QDecoder", type=int, default=16)
-parser.add_argument("--QChannel", type=int, default=16)
-parser.add_argument("--DesignSNRdB", type=float, default=3.0)
+parser.add_argument("--N", type=int, default=128, help="code length")
+parser.add_argument("--A", type=int, default=32, help="# information bits")
+parser.add_argument("--L", type=int, default=8, help="list size for SCL decoding")
+parser.add_argument("--DecoderType", type=str, default="FastSCL-LUT", help="Different Quantized Decoder: SC-LUT/SCL-LUT/FastSC-LUT/FastSCL-LUT/CASCL-LUT")
+parser.add_argument("--QuantizationAlgorithm", type=str, default="DegradeMerge", help="Different Quantization Algorithm: MMI/MsIB/DegradeMerge")
+parser.add_argument("--isCRC",type=str, default="no", help="Whether Use CRC: yes/no")
+parser.add_argument("--QChannelUniform", type=int, default=128, help="Uniform Channel Quantization Resolution: Default Option is best")
+parser.add_argument("--QDecoder", type=int, default=16, help="Decoder Quantization Resolution: 8 (3-bit) / 16 (4-bit) / 32 (5-bit)")
+parser.add_argument("--QChannel", type=int, default=16, help="Channel Compression Quantization Resolution:8 (3-bit) / 16 (4-bit) / 32 (5-bit)")
+parser.add_argument("--DesignSNRdB", type=float, default=3.0, help="Design SNR for Lookup Table")
 args = parser.parse_args()
 
 # CRC encoding scheme in 5G NR PDCCH polar encoding
@@ -51,11 +51,6 @@ L = args.L # list size
 rate = A / N # true ode rate
 DecoderType = args.DecoderType
 
-if isCRC == "yes" and DecoderType[:2] != "CA":
-    raise RuntimeError("You are using CRC added encoding scheme and it seems that you are not using CA-type"
-                       " decoding algorithm. Try using --DecoderType CA-SCL")
-if DecoderType[-2:] == "SC" and L != 1:
-    raise RuntimeError("You are using SC or FastSC decoder and it seems that you erroneously set L != 1. Try setting --L 1")
 
 # quantization parameter
 QDecoder = args.QDecoder
@@ -103,20 +98,18 @@ DecoderDict = {"SC-LUT": SCLUTDecoder(N, K, frozenbits_indicator, messagebits_in
                "SCL-LUT": SCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
                "FastSC-LUT": FastSCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
                "FastSCL-LUT": FastSCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
-               "CA-SCL-LUT": CASCLLUTDecoder(N, K, A, L, frozenbits_indicator, messagebits_indicator, crc_n, crc_p, fs, gs, virtual_channel_llrs)}
+               "CASCL-LUT": CASCLLUTDecoder(N, K, A, L, frozenbits_indicator, messagebits_indicator, crc_n, crc_p, fs, gs, virtual_channel_llrs)}
 
 polar_decoder = DecoderDict[DecoderType]
 
 # configure experiment tracer
+if not os.path.isdir(os.path.join(os.getcwd(), "simulation result")):
+    os.makedirs(os.path.join(os.getcwd(), "simulation result"))
 experiment_name = "{:s}-N={:d}-A={:d}-L={:d}-CRC={:s}".format(DecoderType, N, A, L, isCRC)
 if os.path.isdir(os.path.join(os.getcwd(), "simulation result", experiment_name)):
     shutil.rmtree(os.path.join(os.getcwd(), "simulation result", experiment_name))
 tracer = Tracer('simulation result').attach(experiment_name)
-configure = {"N": N,
-             "A": A,
-             "K": K,
-             "L": L,
-             }
+configure = {"N": N, "A": A, "K": K, "L": L}
 tracer.store(Config(configure))
 
 # simulation parameter configuration
@@ -168,7 +161,11 @@ for EbN0dB in EbN0dBTest:
 
         msg = np.random.randint(low=0, high=2, size=K)  # generate 0-1 msg bits for valina SC
 
-        cword = polar_encoder.encode(msg)
+        if isCRC == "yes":
+            msg_crc = crc_encoder.encode(msg)
+            cword = polar_encoder.encode(msg_crc).astype(np.int)
+        else:
+            cword = polar_encoder.encode(msg).astype(np.int)
 
         bpsksymbols = 1 - 2 * cword  # BPSK modulation
 
@@ -207,6 +204,7 @@ for EbN0dB in EbN0dBTest:
             tracer.log("{:.6f}".format(BLER_sim), file="BLER")
     total_blocks += Nblocks
 
+# Save BER/BLER curve
 plt.figure(dpi=300)
 plt.semilogy(EbN0dBTest, BER, color='r', linestyle='-', marker="*", markersize=5)
 plt.legend(["{:s}".format(DecoderType)])
@@ -222,5 +220,3 @@ plt.xlabel("Eb/N0 (dB)")
 plt.ylabel("Block Error Rate (BLER)")
 plt.grid()
 tracer.store(plt.gcf(), "BLER.png")
-
-

@@ -95,7 +95,7 @@ class QDensityEvolutionMsIB():
             else:
                 probs = virtual_channel_transition_probs[level - 1]
 
-            for node in tqdm(range(num_node_cur_level)):
+            for node in range(num_node_cur_level):
                 offset = num_bits_per_node * node
                 stride = num_bits_per_node // 2
                 node_posi = 2**level + node - 1

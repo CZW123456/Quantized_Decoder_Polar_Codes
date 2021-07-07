@@ -24,16 +24,16 @@ import matplotlib.pyplot as plt
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--N", type=int, default=256)
-parser.add_argument("--A", type=int, default=32)
-parser.add_argument("--L", type=int, default=8)
-parser.add_argument("--DecoderType", type=str, default="SC-LUT")
-parser.add_argument("--Quantizer", type=str, default="MinDistortion")
-parser.add_argument("--isCRC",type=str, default="no")
-parser.add_argument("--QChannelUniform", type=int, default=128)
-parser.add_argument("--QChannelCompressed", type=int, default=16)
-parser.add_argument("--QDecoder", type=int, default=16)
-parser.add_argument("--DesignSNRdB", type=float, default=3.0)
+parser.add_argument("--N", type=int, default=128, help="code length")
+parser.add_argument("--A", type=int, default=32, help="# information bits")
+parser.add_argument("--L", type=int, default=8, help="list size for SCL decoding")
+parser.add_argument("--DecoderType", type=str, default="FastSC-LUT",  help="Different Quantized Decoder: SC-LUT/SCL-LUT/FastSC-LUT/FastSCL-LUT/CASCL-LUT")
+parser.add_argument("--Quantizer", type=str, default="MinDistortion", help="Quantization Algorithm: MinDistortion")
+parser.add_argument("--isCRC",type=str, default="no", help="Whether Use CRC: yes/no")
+parser.add_argument("--QChannelUniform", type=int, default=128, help="Uniform Channel Quantization Resolution: Default Option is best")
+parser.add_argument("--QDecoder", type=int, default=16, help="Decoder Quantization Resolution: 8 (3-bit) / 16 (4-bit) / 32 (5-bit)")
+parser.add_argument("--QChannel", type=int, default=16, help="Channel Compression Quantization Resolution:8 (3-bit) / 16 (4-bit) / 32 (5-bit)")
+parser.add_argument("--DesignSNRdB", type=float, default=3.0, help="Design SNR for Lookup Table")
 args = parser.parse_args()
 
 # CRC encoding scheme in 5G NR PDCCH polar encoding
@@ -54,7 +54,7 @@ DecoderType = args.DecoderType
 
 # quantization parameter
 QDecoder = args.QDecoder
-QChannelCompressed = args.QChannelCompressed
+QChannelCompressed = args.QChannel
 QChannelUniform = args.QChannelUniform
 Quantizer = args.Quantizer
 
@@ -94,8 +94,7 @@ gs = []
 for ele in lut_gs:
     gs.append(ele.tolist())
 
-
-ChannelQuantizerDict = {"MinDistortion":LLRQuantizer()}
+ChannelQuantizerDict = {"MinDistortion": LLRQuantizer()}
 DecoderDict = {"SC-LUT": SCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
                "SCL-LUT": SCLLUTDecoder(N, K, L, frozenbits_indicator, messagebits_indicator, fs, gs, virtual_channel_llrs),
                "FastSC-LUT": FastSCLUTDecoder(N, K, frozenbits_indicator, messagebits_indicator, node_type, fs, gs, virtual_channel_llrs),
@@ -103,8 +102,9 @@ DecoderDict = {"SC-LUT": SCLUTDecoder(N, K, frozenbits_indicator, messagebits_in
                "CASCL-LUT": CASCLLUTDecoder(N, K, A, L, frozenbits_indicator, messagebits_indicator, crc_n, crc_p, fs, gs, virtual_channel_llrs)}
 
 polar_decoder = DecoderDict[DecoderType]
-
 # configure experiment tracer
+if not os.path.isdir(os.path.join(os.getcwd(), "simulation result")):
+    os.makedirs(os.path.join(os.getcwd(), "simulation result"))
 experiment_name = "{:s}-N={:d}-A={:d}-L={:d}-CRC={:s}".format(DecoderType, N, A, L, isCRC)
 if os.path.isdir(os.path.join(os.getcwd(), "simulation result", experiment_name)):
     shutil.rmtree(os.path.join(os.getcwd(), "simulation result", experiment_name))
@@ -202,6 +202,7 @@ for EbN0dB in EbN0dBTest:
             tracer.log("{:.6f}".format(BLER_sim), file="BLER")
     total_blocks += Nblocks
 
+# Save BER/BLER curve
 plt.figure(dpi=300)
 plt.semilogy(EbN0dBTest, BER, color='r', linestyle='-', marker="*", markersize=5)
 plt.legend(["{:s}".format(DecoderType)])
