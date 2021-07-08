@@ -76,3 +76,6 @@ python3 mainQuantizedDecoder_ContinuousDomain.py --help
 
 # Related Papers
 * Z. Cao, H. Zhu, Y. Zhao and D. Li, "Nonuniform Quantized Decoder for Polar Codes With Minimum Distortion Quantizer," in IEEE Communications Letters, vol. 25, no. 3, pp. 835-839, March 2021, doi: 10.1109/LCOMM.2020.3041902.
+
+# TODO
+* Add support of Windows platform compilation of cpp codes. Currently, the compilation of cpp codes are Ok with Linux or MacOS
