@@ -16,9 +16,19 @@ This repo implements various decoders for polar codes under AWGN channel. The im
 The decoders are all implemented by C++11 with -o3 complier configuration for speed. The Cpp codes are easy to read without 
 fancy optimization skills like SIMD or multi-threading. However, the speed is quite acceptable for research propose. Please 
 have fun with it !
+
+# Requirement
+* numpy
+* matplot
+* pickle
+* torchtracer
+* scipy
+* tqdm
+
+
 # Installation
 To use the simulation platform, you need to first compile the Cpp codes for the quantizer generation algorithms (MMI, MinDistortion), 
-the decoders and the encoders, which locate in /MMIQuantizer, /PolarDecoder, /PolarEncoder respectively.
+the decoders and the encoders, which locate in /Quantizer, /PolarDecoder, /PolarEncoder respectively.
 
 We recommend you to enter these directory and read the README.md in these directory to compile and install the package. The Cpp codes are 
 organized in different classes and wrapped with Python interface therefore we can direct call them in our Python codes.
