@@ -116,5 +116,4 @@ result/
 *.zip
 
 cmake-build-debug/
-*.sh
 .DS_Store

@@ -4,9 +4,9 @@ Requirements:
 - numpy
 
 
-## Howto Install
+## How to Install
 
 ### from source
 ```bash
-./build,sh
+./build.sh
 ```
