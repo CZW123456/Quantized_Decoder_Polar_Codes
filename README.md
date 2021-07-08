@@ -1,4 +1,4 @@
-*Awesome Codecs for Polar Codes*
+# Awesome Codecs for Polar Codes
 
 # Description
 This repo implements various decoders for polar codes under AWGN channel. The implemented decoders include
@@ -45,18 +45,18 @@ If you run simulation for uniformly quantized decoders, you should just run the 
 # Examples
 * Run simulation of Minimum Distortion Quantized Decoding
 ```bash
-python3 GenerateLookUpTable_LLRDomain.py
-python3 mainQuantizedDecoder_LLRDomain.py
+python3 GenerateLookUpTable_LLRDomain.py --N 128 --QDecoder 16 --QChannelUniform 128 -QChannelCompressed 16 --DesignSNRdB 3.0 
+python3 mainQuantizedDecoder_LLRDomain.py --N 128 --A 32 --L 8 --DecoderType SCL-LUT --isCRC no --QChannelUniform 128 --QDecoder 16 --QChannel 16 --DesignSNRdB 3.0
 ```
 * Run simulation of MMI/MsIB/DegradeMerge Quantized Decoding
 ```bash
-python3 GenerateLookUpTable_ProbabilityDomain.py
-python3 mainQuantizedDecoder_ProbabilityDomain.py
+python3 GenerateLookUpTable_ProbabilityDomain.py --N 128 --QDecoder 16 --QChannelUniform 128 -QChannelCompressed 16 --DesignSNRdB 3.0 --Quantizer MMI # --Quantizer MsIB --Quantizer DegradeMerge
+python3 mainQuantizedDecoder_ProbabilityDomain.py --N 128 --A 32 --L 8 --DecoderType SCL-LUT --isCRC no --QChannelUniform 128 --QDecoder 16 --QChannel 16 --DesignSNRdB 3.0
 ```
 
 * Run simulation of Uniformly Quantized Decoding
 ```bash
-python3 mainQuantizedDecoder_ContinuousDomain.py
+python3 mainQuantizedDecoder_ContinuousDomain.py --N 128 --A 32 --L 8 --DecoderType SCL-LUT --isCRC no --QChannelUniform 128 --QDecoder 16 --QChannel 16 --DesignSNRdB 3.0
 ```
 
 Commend line parameters are enabled for the above codes, you can get access to the meaning of each parameter by running for example
